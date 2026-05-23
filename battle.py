@@ -1,52 +1,58 @@
 import random
-from constants import MAX_ROUNDS, LOG_FILE
+from typing import List, Optional
+
+from colorama import Fore, Style, init
+
 from classes import Person
+from constants import LOG_FILE, MAX_ROUNDS
+
+init(autoreset=True)
 
 
-def fight(participants):
+def fight(participants: List[Person]) -> Optional[Person]:
     """
-    Идет бой между "именами".
+    Проводим бой между участниками до одного победителя.
 
-    Вот аргументы:
-        participants (list[Person]): список персонажей (объекты классов
-            Person, Warrior, Paladin).
+    Аргументы:
+        participants (List[Person]): список объектов Person.
 
-    А после уже возвращает:
-        Person: победитель. Думаю, как объединим все ок)
+    Возвращаем:
+        Optional[Person]: победитель или None.
     """
-    alive = participants[:]
-    round_counter = 1
-    log_lines = []
+    alive_list: List[Person] = participants[:]
+    round_counter: int = 1
+    log_lines: List[str] = []
 
-    def log(message):
-        print(message)
+    def log_message(message: str, color: str = Fore.WHITE) -> None:
+        colored_message = f"{color}{message}{Style.RESET_ALL}"
+        print(colored_message)
         log_lines.append(message)
 
-    while len(alive) > 1 and round_counter <= MAX_ROUNDS:
-        attacker = random.choice(alive)
+    while len(alive_list) > 1 and round_counter <= MAX_ROUNDS:
+        attacker: Person = random.choice(alive_list)
+        possible_defenders: List[Person] = [person for person in alive_list if person != attacker]
+        defender: Person = random.choice(possible_defenders)
 
-        # Защитник != атакующий, сперва чет не подумал об этом xD
-        # листкомпрехеншион классная штука
-        possible_defenders = [person for person in alive if person != attacker]
-        defender = random.choice(possible_defenders)
+        damage: int = defender.take_damage(attacker.attack_damage)
 
-        damage = defender.take_damage(attacker.base_attack)
-
-        log(
-            f"{attacker.name} бьет {defender.name} на {damage} урона"
+        log_message(
+            f"{attacker.name} бьет {defender.name} на {damage} урона",
+            Fore.YELLOW
         )
 
-        if not defender.is_alive():
-            log(f"{defender.name} повержен!")
-            alive.remove(defender)
+        if defender.hp_now <= 0:
+            log_message(f"{defender.name} повержен!", Fore.RED)
+            alive_list.remove(defender)
 
         round_counter += 1
 
-    winner = alive[0] if alive else None
-    log(f"Победитель: {winner.name}!")
+    winner: Optional[Person] = alive_list[0] if alive_list else None
+    if winner:
+        log_message(f"Победитель: {winner.name}!", Fore.GREEN)
+    else:
+        log_message("Бой не состоялся!", Fore.RED)
 
-    # Тут я сделал, чтобы в лог запись шла, можно будет потом отследить)
-    with open(LOG_FILE, "w", encoding="utf-8") as file:
-        file.write("\n".join(log_lines))
+    with open(LOG_FILE, "w", encoding="utf-8") as log_file:
+        log_file.write("\n".join(log_lines))
 
     return winner
